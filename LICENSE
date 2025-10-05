@@ -1,0 +1,59 @@
+PROPRIETARY LICENSE
+
+Copyright © 2024 KJR Labs. All Rights Reserved.
+
+Made in India 🇮🇳
+
+This software and associated documentation files (the "Software") are the exclusive
+property of KJR Labs.
+
+TERMS AND CONDITIONS
+
+1. OWNERSHIP
+   All rights, title, and interest in and to the Software remain with KJR Labs.
+
+2. PERMITTED USE
+   This Software is provided for personal, non-commercial use only. You may:
+   - View and use the Software for personal entertainment
+   - Study the code for educational purposes
+
+3. RESTRICTIONS
+   You may NOT:
+   - Reproduce, distribute, or create derivative works from the Software
+   - Use the Software for commercial purposes
+   - Remove or alter any proprietary notices or labels on the Software
+   - Reverse engineer, decompile, or disassemble the Software (except as permitted by law)
+   - Sublicense, sell, rent, or lease the Software
+
+4. NO WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+   INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+   PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL KJR LABS BE LIABLE FOR
+   ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+   OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+   OTHER DEALINGS IN THE SOFTWARE.
+
+5. TERMINATION
+   This license is effective until terminated. Your rights under this license will
+   terminate automatically without notice if you fail to comply with any term of this
+   license.
+
+6. GOVERNING LAW
+   This license shall be governed by and construed in accordance with the laws of India,
+   without regard to its conflict of law provisions.
+
+For licensing inquiries, permissions, or commercial use requests, please contact:
+KJR Labs
+
+---
+
+THIRD-PARTY ACKNOWLEDGMENTS
+
+This Software uses the following third-party libraries:
+
+- MediaPipe Hands (Google)
+  License: Apache License 2.0
+  URL: https://google.github.io/mediapipe/
+
+The above third-party libraries are not covered by this license and are subject to
+their respective licenses.

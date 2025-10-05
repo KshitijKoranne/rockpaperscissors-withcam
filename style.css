@@ -938,6 +938,68 @@ header p {
     margin-top: 4px;
 }
 
+/* Camera Error Modal */
+.camera-error-modal .modal-content {
+    max-width: 600px;
+}
+
+.error-header {
+    background: linear-gradient(135deg, #f44336 0%, #e91e63 100%);
+}
+
+.error-icon {
+    font-size: 4rem;
+    text-align: center;
+    margin: 20px 0;
+}
+
+.modal-body h3 {
+    text-align: center;
+    color: var(--text-primary);
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+#camera-error-message {
+    text-align: center;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 25px;
+    font-size: 1.05rem;
+}
+
+.error-solutions {
+    background: var(--surface-hover);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+}
+
+.error-solutions h4 {
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    font-size: 1.1rem;
+}
+
+.error-solutions ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.error-solutions li {
+    color: var(--text-secondary);
+    padding: 8px 0;
+    font-size: 0.95rem;
+}
+
+#retry-camera-button {
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+    display: block;
+}
+
 /* Achievement Notification */
 .achievement-notification {
     position: fixed;
@@ -1004,23 +1066,212 @@ header p {
         gap: 20px;
     }
 
+    header {
+        margin-bottom: 15px;
+    }
+
     header h1 {
-        font-size: 2rem;
+        font-size: 1.75rem;
+        margin-bottom: 5px;
+    }
+
+    header p {
+        font-size: 0.9rem;
+    }
+
+    /* Header buttons on mobile */
+    .header-buttons {
+        position: relative;
+        top: auto;
+        right: auto;
+        justify-content: center;
+        margin-top: 12px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .theme-btn, .achievements-btn {
+        width: 36px;
+        height: 36px;
     }
 
     .help-btn {
-        position: static;
-        margin: 15px auto 0;
+        font-size: 0.9rem;
+        padding: 8px 16px;
     }
 
+    .help-btn svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    /* Game controls */
+    .game-mode-selector, .difficulty-selector {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .game-mode-selector select, .difficulty-selector select {
+        font-size: 0.9rem;
+        padding: 6px 10px;
+    }
+
+    .practice-mode-toggle {
+        padding: 6px 10px;
+    }
+
+    .practice-mode-toggle span {
+        font-size: 0.9rem;
+    }
+
+    /* Choices display */
     .choices {
         flex-direction: column;
-        gap: 20px;
+        gap: 15px;
     }
 
     .vs-indicator {
         order: 2;
-        margin: 10px 0;
+        margin: 8px 0;
+        font-size: 1rem;
+    }
+
+    .choice-display {
+        width: 70px;
+        height: 70px;
+        font-size: 2.2rem;
+    }
+
+    .choice-card h4 {
+        font-size: 0.95rem;
+    }
+
+    /* Round info */
+    .round-info h3 {
+        font-size: 1.1rem;
+    }
+
+    .countdown {
+        font-size: 2rem;
+        min-height: 35px;
+    }
+
+    /* Buttons */
+    .play-btn, .reset-btn {
+        padding: 10px 24px;
+        font-size: 1rem;
+    }
+
+    /* Scoreboard */
+    .score-item {
+        font-size: 0.9rem;
+    }
+
+    .score-item span:last-child {
+        font-size: 1.3rem;
+    }
+
+    /* Modals */
+    .modal-content {
+        width: 95%;
+        max-width: 500px;
+    }
+
+    .modal-header {
+        padding: 16px 20px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.3rem;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    /* Achievements grid */
+    .achievements-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+    }
+
+    /* Volume control */
+    .volume-control {
+        bottom: 15px;
+        right: 15px;
+        padding: 10px 14px;
+    }
+
+    #volume-slider {
+        width: 80px;
+    }
+
+    /* Achievement notification */
+    .achievement-notification {
+        min-width: 280px;
+        padding: 14px 18px;
+        top: 70px;
+    }
+
+    .achievement-notification.show {
+        right: 15px;
+    }
+
+    .achievement-notification-icon {
+        font-size: 2rem;
+    }
+
+    .achievement-notification-title {
+        font-size: 0.75rem;
+    }
+
+    .achievement-notification-name {
+        font-size: 1rem;
+    }
+
+    /* Quality indicator */
+    .detection-quality {
+        flex-wrap: wrap;
+        font-size: 0.85rem;
+    }
+
+    .quality-bar {
+        width: 80px;
+    }
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    header p {
+        font-size: 0.85rem;
+    }
+
+    .video-container {
+        max-width: 100%;
+        border-radius: 8px;
+    }
+
+    .gesture-icons {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .gesture-icon {
+        font-size: 1.3rem;
+        padding: 6px;
+    }
+
+    #gesture-detected {
+        font-size: 1rem;
+    }
+
+    .ready-indicator {
+        width: 20px;
+        height: 20px;
     }
 
     .choice-display {
@@ -1029,32 +1280,142 @@ header p {
         font-size: 2rem;
     }
 
-    .countdown {
-        font-size: 2.5rem;
+    .game-mode-selector label, .difficulty-selector label {
+        font-size: 0.85rem;
     }
 
-    .modal-content {
-        width: 95%;
+    .round-info h3 {
+        font-size: 1rem;
+    }
+
+    #round-result {
+        font-size: 1rem;
+    }
+
+    .play-btn, .reset-btn {
+        padding: 10px 20px;
+        font-size: 0.95rem;
+    }
+
+    /* Smaller volume control on very small screens */
+    .volume-control {
+        bottom: 10px;
+        right: 10px;
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    #volume-slider {
+        width: 60px;
+    }
+
+    /* Achievement notification on small screens */
+    .achievement-notification {
+        min-width: 260px;
+        padding: 12px 16px;
+        top: 60px;
+    }
+
+    .achievement-notification.show {
+        right: 10px;
+    }
+
+    .achievement-notification-icon {
+        font-size: 1.8rem;
+    }
+
+    /* Modal adjustments */
+    .modal-header {
+        padding: 14px 18px;
+    }
+
+    .modal-header h2 {
+        font-size: 1.2rem;
     }
 
     .modal-body {
-        padding: 20px;
+        padding: 16px;
+    }
+
+    .modal-body h3 {
+        font-size: 1.1rem;
+    }
+
+    .modal-body li {
+        font-size: 0.9rem;
+    }
+
+    /* Camera error modal */
+    .error-icon {
+        font-size: 3rem;
+    }
+
+    .error-solutions {
+        padding: 16px;
+    }
+
+    .error-solutions h4 {
+        font-size: 1rem;
+    }
+
+    .error-solutions li {
+        font-size: 0.85rem;
+        padding: 6px 0;
+    }
+
+    /* Achievement cards */
+    .achievement-card {
+        padding: 16px;
+    }
+
+    .achievement-icon {
+        font-size: 2.5rem;
+    }
+
+    .achievement-title {
+        font-size: 1rem;
+    }
+
+    .achievement-description {
+        font-size: 0.85rem;
     }
 }
 
-@media (max-width: 480px) {
-    .video-container {
-        max-width: 100%;
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    /* Increase touch targets */
+    .theme-btn, .achievements-btn {
+        min-width: 44px;
+        min-height: 44px;
     }
-    
-    .gesture-icons {
-        flex-wrap: wrap;
-        gap: 10px;
+
+    .help-btn {
+        min-height: 44px;
     }
-    
-    .gesture-icon {
-        font-size: 1.5rem;
-        padding: 8px;
+
+    .play-btn, .reset-btn {
+        min-height: 44px;
+    }
+
+    .mute-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .close-btn {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    /* Remove hover effects on touch devices */
+    .gesture-icon:hover {
+        background: var(--border-light);
+        transform: scale(1);
+    }
+
+    .gesture-icon:active {
+        background: var(--border);
+        transform: scale(1.1);
     }
 }
 

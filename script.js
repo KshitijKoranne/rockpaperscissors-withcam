@@ -1,3 +1,16 @@
+// Utility function for debouncing
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 class RockPaperScissorsGame {
     constructor() {
         this.videoElement = document.getElementById('webcam');
@@ -9,6 +22,9 @@ class RockPaperScissorsGame {
         
         this.hands = null;
         this.animationId = null;
+        this.isProcessing = false;
+        this.cameraStream = null;
+        this.countdownInterval = null;
 
         this.gameState = {
             round: 1,
@@ -84,6 +100,7 @@ class RockPaperScissorsGame {
             playerScore: getElement('player-score'),
             computerScore: getElement('computer-score'),
             gestureIcons: document.querySelectorAll('.gesture-icon'),
+            gestureText: getElement('gesture-text'),
             qualityFill: getElement('quality-fill'),
             qualityText: getElement('quality-text'),
             confettiContainer: getElement('confetti-container'),
@@ -109,7 +126,10 @@ class RockPaperScissorsGame {
             achievementsButton: getElement('achievements-button'),
             achievementsModal: getElement('achievements-modal'),
             closeAchievementsModal: getElement('close-achievements-modal'),
-            achievementsList: getElement('achievements-list')
+            achievementsList: getElement('achievements-list'),
+            cameraErrorModal: getElement('camera-error-modal'),
+            cameraErrorMessage: getElement('camera-error-message'),
+            retryCameraButton: getElement('retry-camera-button')
         };
     }
     
@@ -124,6 +144,7 @@ class RockPaperScissorsGame {
         this.elements.themeToggle.addEventListener('click', () => this.toggleTheme());
         this.elements.achievementsButton.addEventListener('click', () => this.openAchievementsModal());
         this.elements.closeAchievementsModal.addEventListener('click', () => this.closeAchievementsModal());
+        this.elements.retryCameraButton.addEventListener('click', () => this.retryCamera());
 
         // Close modal when clicking outside
         this.elements.helpModal.addEventListener('click', (e) => {
@@ -173,6 +194,15 @@ class RockPaperScissorsGame {
         this.elements.backgroundMusic.volume = this.audioState.isMuted ? 0 : this.audioState.previousVolume;
         this.updateMuteIcon();
 
+        // Debounced localStorage save for volume
+        const debouncedVolumeSave = debounce((isMuted) => {
+            try {
+                localStorage.setItem('audioMuted', isMuted.toString());
+            } catch (error) {
+                console.error('Failed to save audio mute state:', error);
+            }
+        }, 500);
+
         this.elements.volumeSlider.addEventListener('input', (e) => {
             const volume = e.target.value / 100;
             this.audioState.previousVolume = volume;
@@ -185,7 +215,7 @@ class RockPaperScissorsGame {
             if (volume > 0 && this.audioState.isMuted) {
                 this.audioState.isMuted = false;
                 this.updateMuteIcon();
-                localStorage.setItem('audioMuted', 'false');
+                debouncedVolumeSave(false);
             }
         });
 
@@ -209,7 +239,12 @@ class RockPaperScissorsGame {
         }
 
         this.updateMuteIcon();
-        localStorage.setItem('audioMuted', this.audioState.isMuted.toString());
+
+        try {
+            localStorage.setItem('audioMuted', this.audioState.isMuted.toString());
+        } catch (error) {
+            console.error('Failed to save audio mute state:', error);
+        }
     }
 
     updateMuteIcon() {
@@ -232,7 +267,13 @@ class RockPaperScissorsGame {
     toggleTheme() {
         this.themeState.isDark = !this.themeState.isDark;
         document.body.classList.toggle('dark-mode');
-        localStorage.setItem('darkMode', this.themeState.isDark.toString());
+
+        try {
+            localStorage.setItem('darkMode', this.themeState.isDark.toString());
+        } catch (error) {
+            console.error('Failed to save theme preference:', error);
+        }
+
         this.updateThemeIcon();
     }
 
@@ -262,6 +303,15 @@ class RockPaperScissorsGame {
         try {
             console.log('Initializing camera...');
 
+            // Cleanup existing camera stream first
+            this.cleanupCamera();
+
+            // Check if mediaDevices is supported
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                this.showCameraError('Your browser does not support camera access. Please use a modern browser like Chrome, Firefox, or Safari.');
+                return;
+            }
+
             const constraints = {
                 video: {
                     width: { ideal: 640 },
@@ -271,6 +321,7 @@ class RockPaperScissorsGame {
             };
 
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.cameraStream = stream;
             this.videoElement.srcObject = stream;
 
             this.videoElement.addEventListener('loadedmetadata', () => {
@@ -291,8 +342,65 @@ class RockPaperScissorsGame {
 
         } catch (error) {
             console.error('Error accessing camera:', error);
-            this.showError('Camera access denied. Please allow camera permissions and refresh the page.');
+
+            let errorMessage = 'Unable to access camera. ';
+
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                errorMessage = 'Camera permission was denied. Please allow camera access to play this game.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMessage = 'No camera found on this device. This game requires a camera to detect hand gestures.';
+            } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+                errorMessage = 'Camera is already in use by another application. Please close other apps using the camera and try again.';
+            } else if (error.name === 'OverconstrainedError') {
+                errorMessage = 'Camera does not meet the required specifications. Please try a different camera.';
+            } else if (error.name === 'SecurityError') {
+                errorMessage = 'Camera access is blocked due to security settings. Please check your browser permissions.';
+            } else {
+                errorMessage = `Camera error: ${error.message || 'Unknown error occurred'}`;
+            }
+
+            this.showCameraError(errorMessage);
         }
+    }
+
+    cleanupCamera() {
+        // Stop animation frame loop
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+
+        // Stop camera stream
+        if (this.cameraStream) {
+            this.cameraStream.getTracks().forEach(track => {
+                track.stop();
+                console.log('Camera track stopped:', track.kind);
+            });
+            this.cameraStream = null;
+        }
+
+        // Clear video element
+        if (this.videoElement && this.videoElement.srcObject) {
+            this.videoElement.srcObject = null;
+        }
+
+        // Reset processing flag
+        this.isProcessing = false;
+
+        console.log('Camera resources cleaned up');
+    }
+
+    showCameraError(message) {
+        this.elements.cameraErrorMessage.textContent = message;
+        this.elements.cameraErrorModal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+        this.elements.playButton.disabled = true;
+    }
+
+    retryCamera() {
+        this.elements.cameraErrorModal.classList.remove('show');
+        document.body.style.overflow = '';
+        this.initializeCamera();
     }
     
     initializeMediaPipe() {
@@ -318,10 +426,30 @@ class RockPaperScissorsGame {
     }
     
     startVideoProcessing() {
+        // Prevent multiple processing loops
+        if (this.isProcessing) {
+            console.warn('Video processing already running');
+            return;
+        }
+
+        this.isProcessing = true;
+        console.log('Starting video processing loop');
+
         const processFrame = async () => {
-            if (this.videoElement.readyState === 4) {
-                await this.hands.send({ image: this.videoElement });
+            // Check if we should continue processing
+            if (!this.isProcessing) {
+                console.log('Video processing stopped');
+                return;
             }
+
+            if (this.videoElement.readyState === 4) {
+                try {
+                    await this.hands.send({ image: this.videoElement });
+                } catch (error) {
+                    console.error('Error processing video frame:', error);
+                }
+            }
+
             this.animationId = requestAnimationFrame(processFrame);
         };
         processFrame();
@@ -353,66 +481,79 @@ class RockPaperScissorsGame {
     }
     
     classifyGesture(landmarks) {
-        if (!landmarks || landmarks.length !== 21) {
-            return { gesture: null, confidence: 0 };
-        }
-
-        const FINGER_TIPS = [4, 8, 12, 16, 20];
-        const FINGER_MCPS = [2, 5, 9, 13, 17];
-        const FINGER_PIPS = [3, 6, 10, 14, 18];
-        const EXTENSION_THRESHOLD = 0.03;
-
-        const extendedFingers = [];
-        const fingerConfidences = [];
-
-        // Check thumb (different logic due to thumb orientation)
-        const thumbExtended = landmarks[4].x > landmarks[3].x;
-        if (thumbExtended) {
-            extendedFingers.push('thumb');
-        }
-        fingerConfidences.push(Math.abs(landmarks[4].x - landmarks[3].x) * 5);
-
-        // Check other fingers
-        for (let i = 1; i < 5; i++) {
-            const tipIndex = FINGER_TIPS[i];
-            const pipIndex = FINGER_PIPS[i];
-            const mcpIndex = FINGER_MCPS[i];
-
-            const fingerExtended = landmarks[tipIndex].y < landmarks[pipIndex].y;
-            const extensionDistance = Math.abs(landmarks[tipIndex].y - landmarks[mcpIndex].y);
-
-            if (fingerExtended && extensionDistance > EXTENSION_THRESHOLD) {
-                extendedFingers.push(i);
+        try {
+            if (!landmarks || landmarks.length !== 21) {
+                return { gesture: null, confidence: 0 };
             }
 
-            fingerConfidences.push(Math.min(1.0, extensionDistance * 8));
+            const FINGER_TIPS = [4, 8, 12, 16, 20];
+            const FINGER_MCPS = [2, 5, 9, 13, 17];
+            const FINGER_PIPS = [3, 6, 10, 14, 18];
+            const EXTENSION_THRESHOLD = 0.03;
+
+            const extendedFingers = [];
+            const fingerConfidences = [];
+
+            // Validate landmark data
+            for (let i = 0; i < landmarks.length; i++) {
+                if (!landmarks[i] || typeof landmarks[i].x === 'undefined' || typeof landmarks[i].y === 'undefined') {
+                    console.warn('Invalid landmark data at index', i);
+                    return { gesture: null, confidence: 0 };
+                }
+            }
+
+            // Check thumb (different logic due to thumb orientation)
+            const thumbExtended = landmarks[4].x > landmarks[3].x;
+            if (thumbExtended) {
+                extendedFingers.push('thumb');
+            }
+            fingerConfidences.push(Math.abs(landmarks[4].x - landmarks[3].x) * 5);
+
+            // Check other fingers
+            for (let i = 1; i < 5; i++) {
+                const tipIndex = FINGER_TIPS[i];
+                const pipIndex = FINGER_PIPS[i];
+                const mcpIndex = FINGER_MCPS[i];
+
+                const fingerExtended = landmarks[tipIndex].y < landmarks[pipIndex].y;
+                const extensionDistance = Math.abs(landmarks[tipIndex].y - landmarks[mcpIndex].y);
+
+                if (fingerExtended && extensionDistance > EXTENSION_THRESHOLD) {
+                    extendedFingers.push(i);
+                }
+
+                fingerConfidences.push(Math.min(1.0, extensionDistance * 8));
+            }
+
+            const avgFingerConfidence = fingerConfidences.reduce((a, b) => a + b, 0) / fingerConfidences.length;
+
+            let gesture = null;
+            let gestureSpecificConfidence = 0;
+
+            const isRock = extendedFingers.length === 0 ||
+                           (extendedFingers.length === 1 && extendedFingers.includes('thumb'));
+            const isPaper = extendedFingers.length >= 4;
+            const isScissors = extendedFingers.includes(1) &&
+                              extendedFingers.includes(2) &&
+                              extendedFingers.length <= 3;
+
+            if (isRock) {
+                gesture = 'rock';
+                gestureSpecificConfidence = avgFingerConfidence * 0.9 + 0.1;
+            } else if (isPaper) {
+                gesture = 'paper';
+                gestureSpecificConfidence = avgFingerConfidence * 0.8 + 0.2;
+            } else if (isScissors) {
+                gesture = 'scissors';
+                const scissorsSpecific = (fingerConfidences[1] + fingerConfidences[2]) / 2;
+                gestureSpecificConfidence = scissorsSpecific * 0.7 + 0.3;
+            }
+
+            return { gesture, confidence: Math.min(1.0, gestureSpecificConfidence) };
+        } catch (error) {
+            console.error('Error in gesture classification:', error);
+            return { gesture: null, confidence: 0 };
         }
-
-        const avgFingerConfidence = fingerConfidences.reduce((a, b) => a + b, 0) / fingerConfidences.length;
-
-        let gesture = null;
-        let gestureSpecificConfidence = 0;
-
-        const isRock = extendedFingers.length === 0 ||
-                       (extendedFingers.length === 1 && extendedFingers.includes('thumb'));
-        const isPaper = extendedFingers.length >= 4;
-        const isScissors = extendedFingers.includes(1) &&
-                          extendedFingers.includes(2) &&
-                          extendedFingers.length <= 3;
-
-        if (isRock) {
-            gesture = 'rock';
-            gestureSpecificConfidence = avgFingerConfidence * 0.9 + 0.1;
-        } else if (isPaper) {
-            gesture = 'paper';
-            gestureSpecificConfidence = avgFingerConfidence * 0.8 + 0.2;
-        } else if (isScissors) {
-            gesture = 'scissors';
-            const scissorsSpecific = (fingerConfidences[1] + fingerConfidences[2]) / 2;
-            gestureSpecificConfidence = scissorsSpecific * 0.7 + 0.3;
-        }
-
-        return { gesture, confidence: Math.min(1.0, gestureSpecificConfidence) };
     }
     
     smoothGesture(gestureResult) {
@@ -456,10 +597,10 @@ class RockPaperScissorsGame {
         if (stabilityRatio >= 0.6) {
             return dominantGesture;
         }
-        
+
         return null;
     }
-    
+
     updateGestureDisplay(gesture) {
         this.detectedGesture = gesture;
 
@@ -470,11 +611,8 @@ class RockPaperScissorsGame {
         if (gesture) {
             const capitalizedGesture = gesture.charAt(0).toUpperCase() + gesture.slice(1);
 
-            // Update text content (excluding the indicator)
-            const textNode = this.elements.gestureDetected.childNodes[0];
-            if (textNode) {
-                textNode.textContent = `Detected: ${capitalizedGesture} ${this.gestureEmojis[gesture]} `;
-            }
+            // Update dedicated text element
+            this.elements.gestureText.textContent = `Detected: ${capitalizedGesture} ${this.gestureEmojis[gesture]}`;
 
             const activeIcon = document.querySelector(`[data-gesture="${gesture}"]`);
             if (activeIcon) {
@@ -484,10 +622,8 @@ class RockPaperScissorsGame {
             // Show ready indicator
             this.elements.gestureReadyIndicator.classList.add('show');
         } else {
-            const textNode = this.elements.gestureDetected.childNodes[0];
-            if (textNode) {
-                textNode.textContent = 'Show your hand to the camera ';
-            }
+            // Update dedicated text element
+            this.elements.gestureText.textContent = 'Show your hand to the camera';
 
             // Hide ready indicator
             this.elements.gestureReadyIndicator.classList.remove('show');
@@ -519,6 +655,12 @@ class RockPaperScissorsGame {
             return; // Gestures are already being shown in practice mode
         }
 
+        // Clear any existing countdown interval
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+
         this.gameState.isPlaying = true;
         this.elements.playButton.disabled = true;
         this.elements.playButton.textContent = 'Get Ready...';
@@ -536,6 +678,7 @@ class RockPaperScissorsGame {
                 this.elements.countdown.textContent = 'SHOW!';
             } else {
                 clearInterval(this.countdownInterval);
+                this.countdownInterval = null;
                 this.captureGesture();
             }
         }, 1000);
@@ -724,9 +867,11 @@ class RockPaperScissorsGame {
 
         const winsNeeded = Math.ceil(parseInt(this.matchState.mode) / 2);
 
+        // Check player win first to prevent race condition
         if (this.gameState.playerScore >= winsNeeded) {
             setTimeout(() => this.showMatchWinner('You', this.gameState.playerScore, this.gameState.computerScore), 1500);
         } else if (this.gameState.computerScore >= winsNeeded) {
+            // Only show computer win if player hasn't won
             setTimeout(() => this.showMatchWinner('Computer', this.gameState.computerScore, this.gameState.playerScore), 1500);
         }
     }
@@ -772,6 +917,15 @@ class RockPaperScissorsGame {
     }
     
     resetGame() {
+        // Clear countdown interval if running
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+
+        // Reset AI history for fair gameplay
+        this.aiState.playerHistory = [];
+
         this.gameState = {
             round: 1,
             playerScore: 0,
@@ -781,7 +935,7 @@ class RockPaperScissorsGame {
             currentComputerChoice: null,
             countdown: 0
         };
-        
+
         this.clearPreviousRound();
         this.updateScore();
         this.elements.roundNumber.textContent = this.gameState.round;
@@ -827,8 +981,20 @@ class RockPaperScissorsGame {
             { id: 'comeback', title: 'Never Give Up', description: 'Win after being behind 0-2', icon: '💫', unlocked: false, progress: 0, target: 1 }
         ];
 
-        const saved = localStorage.getItem('achievements');
-        return saved ? JSON.parse(saved) : defaultAchievements;
+        try {
+            const saved = localStorage.getItem('achievements');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Validate structure
+                if (Array.isArray(parsed) && parsed.length === defaultAchievements.length) {
+                    return parsed;
+                }
+                console.warn('Invalid achievements data, using defaults');
+            }
+        } catch (error) {
+            console.error('Failed to load achievements:', error);
+        }
+        return defaultAchievements;
     }
 
     loadStats() {
@@ -840,13 +1006,33 @@ class RockPaperScissorsGame {
             comebackInProgress: false
         };
 
-        const saved = localStorage.getItem('achievementStats');
-        return saved ? JSON.parse(saved) : defaultStats;
+        try {
+            const saved = localStorage.getItem('achievementStats');
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Validate structure
+                if (parsed && typeof parsed === 'object' && 'totalRounds' in parsed) {
+                    return parsed;
+                }
+                console.warn('Invalid stats data, using defaults');
+            }
+        } catch (error) {
+            console.error('Failed to load stats:', error);
+        }
+        return defaultStats;
     }
 
     saveAchievements() {
-        localStorage.setItem('achievements', JSON.stringify(this.achievementsState.achievements));
-        localStorage.setItem('achievementStats', JSON.stringify(this.achievementsState.stats));
+        try {
+            localStorage.setItem('achievements', JSON.stringify(this.achievementsState.achievements));
+            localStorage.setItem('achievementStats', JSON.stringify(this.achievementsState.stats));
+        } catch (error) {
+            console.error('Failed to save achievements to localStorage:', error);
+            // Silently fail - achievements will work this session but won't persist
+            if (error.name === 'QuotaExceededError') {
+                console.warn('LocalStorage quota exceeded. Achievement progress will not be saved.');
+            }
+        }
     }
 
     checkAchievements(roundResult, playerChoice, computerChoice) {
@@ -914,8 +1100,8 @@ class RockPaperScissorsGame {
         } else {
             stats.winStreak = 0;
 
-            // Track if player is behind 0-2 for comeback achievement
-            if (this.gameState.playerScore === 0 && this.gameState.computerScore === 2) {
+            // Track if player is behind by 2 or more for comeback achievement
+            if (this.gameState.computerScore - this.gameState.playerScore >= 2) {
                 stats.comebackInProgress = true;
             }
         }
@@ -1042,7 +1228,9 @@ document.addEventListener('DOMContentLoaded', () => {
     new RockPaperScissorsGame();
 
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sw.js')
+        // Use relative path for service worker to work in subdirectories
+        const swPath = new URL('sw.js', document.baseURI).pathname;
+        navigator.serviceWorker.register(swPath)
             .then((registration) => {
                 console.log('ServiceWorker registration successful with scope:', registration.scope);
             })
