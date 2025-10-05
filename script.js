@@ -312,29 +312,23 @@ class RockPaperScissorsGame {
     }
 
     isMobilePhone() {
-        // Check screen width - tablets are typically 768px and above
-        const screenWidth = window.innerWidth;
-
-        // Check user agent for mobile phones (excluding tablets)
         const userAgent = navigator.userAgent || navigator.vendor || window.opera;
 
-        // Patterns that indicate mobile phone (not tablet)
-        const mobilePhonePatterns = /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i;
-
-        // Check if it's a mobile device AND has small screen
-        // Tablets typically have width >= 768px
-        const isMobileUA = mobilePhonePatterns.test(userAgent);
-        const isSmallScreen = screenWidth < 768;
-
-        // Additional check: if it's Android but screen is large, it's likely a tablet
-        const isAndroidTablet = /Android/i.test(userAgent) && !(/Mobile/i.test(userAgent));
-
-        // iPad detection (iPads don't have 'Mobile' in UA)
+        // iPad detection (iPads should be allowed)
         const isIPad = /iPad/i.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-        // Return true only for mobile phones with small screens
-        // Exclude tablets (iPads, Android tablets, and devices with large screens)
-        return (isMobileUA && isSmallScreen && !isAndroidTablet && !isIPad);
+        // Android tablet detection (Android tablets should be allowed)
+        const isAndroidTablet = /Android/i.test(userAgent) && !(/Mobile/i.test(userAgent));
+
+        // If it's a tablet, allow it
+        if (isIPad || isAndroidTablet) {
+            return false;
+        }
+
+        // Block all mobile phones: iPhone, iPod, Android phones, etc.
+        const isMobilePhone = /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+
+        return isMobilePhone;
     }
 
     showMobileBlockModal() {
