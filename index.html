@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors - Hand Gesture Game</title>
+    <meta name="description" content="Play Rock Paper Scissors using hand gestures detected by your camera">
+    <meta name="theme-color" content="#764ba2">
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjMyIiBoZWlnaHQ9IjMyIiByeD0iNCIgZmlsbD0idXJsKCNncmFkaWVudDBfbGluZWFyXzFfMSkiLz4KPGRlZnM+CjxsaW5lYXJHcmFkaWVudCBpZD0iZ3JhZGllbnQwX2xpbmVhcl8xXzEiIHgxPSIwIiB5MT0iMCIgeDI9IjMyIiB5Mj0iMzIiIGdyYWRpZW50VW5pdHM9InVzZXJTcGFjZU9uVXNlIj4KPHN0b3Agc3RvcC1jb2xvcj0iIzY2N2VlYSIvPgo8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiM3NjRiYTIiLz4KPC9saW5lYXJHcmFkaWVudD4KPC9kZWZzPgo8dGV4dCB4PSIxNiIgeT0iMjIiIGZvbnQtZmFtaWx5PSJzYW5zLXNlcmlmIiBmb250LXNpemU9IjEyIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+8J+OuwogPC90ZXh0Pgo8L3N2Zz4K">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" defer></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Rock Paper Scissors</h1>
+            <p>Use hand gestures to play against the computer!</p>
+            <div class="header-buttons">
+                <button id="theme-toggle" class="theme-btn" aria-label="Toggle dark mode">
+                    <svg id="sun-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg id="moon-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+                <button id="achievements-button" class="achievements-btn" aria-label="View achievements">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="8" r="7"></circle>
+                        <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline>
+                    </svg>
+                </button>
+                <button id="help-button" class="help-btn" aria-label="How to play">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    How to Play
+                </button>
+            </div>
+        </header>
+
+        <main class="game-area">
+            <section class="video-section" aria-label="Camera and gesture detection">
+                <div class="video-container">
+                    <video id="webcam" autoplay playsinline muted aria-label="Webcam feed"></video>
+                    <canvas id="output" width="640" height="480" aria-label="Hand tracking visualization"></canvas>
+                </div>
+                <div class="gesture-status">
+                    <p id="gesture-detected" role="status" aria-live="polite">
+                        Show your hand to the camera
+                        <span id="gesture-ready-indicator" class="ready-indicator" aria-label="Gesture ready">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </span>
+                    </p>
+                    <div class="detection-quality">
+                        <span class="quality-label">Detection Quality:</span>
+                        <div class="quality-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                            <div class="quality-fill" id="quality-fill"></div>
+                        </div>
+                        <span class="quality-text" id="quality-text" aria-hidden="true">--</span>
+                    </div>
+                    <div class="gesture-icons" role="group" aria-label="Available gestures">
+                        <span class="gesture-icon" data-gesture="rock" role="img" aria-label="Rock gesture">✊</span>
+                        <span class="gesture-icon" data-gesture="paper" role="img" aria-label="Paper gesture">✋</span>
+                        <span class="gesture-icon" data-gesture="scissors" role="img" aria-label="Scissors gesture">✌️</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="game-controls" aria-label="Game controls and choices">
+                <div class="game-mode-selector">
+                    <label for="game-mode">Game Mode:</label>
+                    <select id="game-mode" aria-label="Select game mode">
+                        <option value="endless">Endless</option>
+                        <option value="3" selected>Best of 3</option>
+                        <option value="5">Best of 5</option>
+                        <option value="7">Best of 7</option>
+                    </select>
+                    <label class="practice-mode-toggle">
+                        <input type="checkbox" id="practice-mode" aria-label="Practice mode">
+                        <span>Practice</span>
+                    </label>
+                </div>
+                <div class="difficulty-selector">
+                    <label for="difficulty">AI Difficulty:</label>
+                    <select id="difficulty" aria-label="Select AI difficulty">
+                        <option value="easy">Easy</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="hard">Hard</option>
+                    </select>
+                </div>
+                <div class="round-info">
+                    <h3>Round <span id="round-number">1</span></h3>
+                    <div class="countdown" id="countdown" role="timer" aria-live="assertive"></div>
+                </div>
+
+                <div class="choices" role="group" aria-label="Player and computer choices">
+                    <div class="choice-card">
+                        <h4>You</h4>
+                        <div class="choice-display" id="player-choice" aria-label="Your choice">?</div>
+                        <p id="player-gesture">Waiting...</p>
+                    </div>
+
+                    <div class="vs-indicator" aria-hidden="true">VS</div>
+
+                    <div class="choice-card">
+                        <h4>Computer</h4>
+                        <div class="choice-display" id="computer-choice" aria-label="Computer's choice">?</div>
+                        <p id="computer-gesture">Waiting...</p>
+                    </div>
+                </div>
+
+                <div class="result-section">
+                    <h3 id="round-result" role="status" aria-live="polite"></h3>
+                    <button id="play-button" class="play-btn">Start Playing</button>
+                </div>
+
+                <div class="scoreboard" aria-label="Game score">
+                    <div class="score-row">
+                        <div class="score-item">
+                            <span>You:</span>
+                            <span id="player-score" aria-label="Your score">0</span>
+                        </div>
+                        <div class="score-item">
+                            <span>Computer:</span>
+                            <span id="computer-score" aria-label="Computer's score">0</span>
+                        </div>
+                    </div>
+                    <button id="reset-button" class="reset-btn">Reset Game</button>
+                </div>
+            </section>
+        </main>
+
+    </div>
+
+    <!-- Match Winner Modal -->
+    <div id="match-winner-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="match-winner-title">
+        <div class="modal-content match-winner-content">
+            <div class="modal-body">
+                <h2 id="match-winner-title" class="match-winner-title"></h2>
+                <p class="match-winner-score"></p>
+                <button id="new-match-button" class="play-btn">New Match</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Help Modal -->
+    <div id="help-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-title">How to Play</h2>
+                <button id="close-modal" class="close-btn" aria-label="Close modal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <h3>Hand Gestures:</h3>
+                <ul>
+                    <li><strong>Rock ✊:</strong> Make a fist</li>
+                    <li><strong>Paper ✋:</strong> Open hand with fingers spread</li>
+                    <li><strong>Scissors ✌️:</strong> Peace sign (two fingers up)</li>
+                </ul>
+                <h3>Rules:</h3>
+                <ul>
+                    <li>Rock beats Scissors</li>
+                    <li>Scissors beats Paper</li>
+                    <li>Paper beats Rock</li>
+                </ul>
+                <p class="tip"><strong>Tip:</strong> Position your hand clearly in front of the camera for best detection!</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Achievements Modal -->
+    <div id="achievements-modal" class="modal" role="dialog" aria-modal="true" aria-labelledby="achievements-title">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="achievements-title">Achievements</h2>
+                <button id="close-achievements-modal" class="close-btn" aria-label="Close modal">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="achievements-list" class="achievements-grid">
+                    <!-- Achievements will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="confetti-container" aria-hidden="true"></div>
+
+    <!-- Volume Control -->
+    <div class="volume-control">
+        <button id="mute-button" class="mute-btn" aria-label="Mute/Unmute">
+            <svg class="volume-icon" id="volume-icon-unmuted" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <svg class="volume-icon" id="volume-icon-muted" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                <line x1="23" y1="9" x2="17" y2="15"></line>
+                <line x1="17" y1="9" x2="23" y2="15"></line>
+            </svg>
+        </button>
+        <input type="range" id="volume-slider" min="0" max="100" value="50" aria-label="Volume control">
+    </div>
+
+    <audio id="background-music" loop>
+        <source src="rock-paper-scissors-music.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="script.js" defer></script>
+</body>
+</html>

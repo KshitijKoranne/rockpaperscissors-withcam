@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors - Hand Gesture Game</title>
+    <meta name="description" content="Play Rock Paper Scissors using hand gestures detected by your camera">
+    <meta name="theme-color" content="#764ba2">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
+    <style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    color: #333;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+header {
+    text-align: center;
+    margin-bottom: 30px;
+    color: white;
+}
+
+header h1 {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+
+header p {
+    font-size: 1.1rem;
+    opacity: 0.9;
+}
+
+.game-area {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 30px;
+    margin-bottom: 30px;
+}
+
+.video-section {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+
+.video-container {
+    position: relative;
+    width: 100%;
+    max-width: 640px;
+    margin: 0 auto;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #000;
+}
+
+#webcam {
+    width: 100%;
+    height: auto;
+    display: block;
+    transform: scaleX(-1);
+    z-index: 1;
+}
+
+#output {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    transform: scaleX(-1);
+    z-index: 2;
+    pointer-events: none;
+}
+
+.gesture-status {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.detection-quality {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 15px 0;
+    font-size: 0.9rem;
+}
+
+.quality-label {
+    font-weight: 600;
+    color: #555;
+}
+
+.quality-bar {
+    width: 100px;
+    height: 8px;
+    background: #e0e0e0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.quality-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f44336 0%, #ff9800 50%, #4CAF50 100%);
+    width: 0%;
+    transition: width 0.2s ease;
+}
+
+.quality-text {
+    font-width: 600;
+    color: #666;
+    min-width: 30px;
+}
+
+#gesture-detected {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 15px;
+    color: #555;
+}
+
+.gesture-icons {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.gesture-icon {
+    font-size: 2rem;
+    padding: 10px;
+    border-radius: 50%;
+    background: #f0f0f0;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.gesture-icon:hover {
+    background: #e0e0e0;
+    transform: scale(1.1);
+}
+
+.gesture-icon.active {
+    background: #4CAF50;
+    color: white;
+    transform: scale(1.2);
+}
+
+.game-controls {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.round-info {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.round-info h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.countdown {
+    font-size: 3rem;
+    font-weight: bold;
+    color: #ff6b6b;
+    min-height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.choices {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 25px;
+}
+
+.choice-card {
+    text-align: center;
+    flex: 1;
+}
+
+.choice-card h4 {
+    font-size: 1.2rem;
+    margin-bottom: 15px;
+    color: #555;
+}
+
+.choice-display {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    border: 3px solid #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto 10px;
+    background: #f9f9f9;
+    transition: all 0.3s ease;
+}
+
+.choice-display.winner {
+    border-color: #4CAF50;
+    background: #e8f5e8;
+    transform: scale(1.1);
+    animation: winner-pulse 0.8s ease-in-out;
+}
+
+.choice-display.loser {
+    border-color: #f44336;
+    background: #ffeaea;
+}
+
+.vs-indicator {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #666;
+    margin: 0 20px;
+}
+
+.result-section {
+    text-align: center;
+}
+
+#round-result {
+    font-size: 1.3rem;
+    margin-bottom: 20px;
+    min-height: 30px;
+    font-weight: 600;
+    transition: all 0.5s ease;
+    transform: scale(1);
+    opacity: 1;
+}
+
+#round-result.animate-in {
+    animation: result-bounce 0.6s ease-out;
+}
+
+#round-result.win {
+    color: #4CAF50;
+}
+
+#round-result.lose {
+    color: #f44336;
+}
+
+#round-result.tie {
+    color: #ff9800;
+}
+
+.play-btn, .reset-btn {
+    padding: 12px 30px;
+    font-size: 1.1rem;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.play-btn {
+    background: #4CAF50;
+    color: white;
+}
+
+.play-btn:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+}
+
+.play-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.reset-btn {
+    background: #f44336;
+    color: white;
+}
+
+.reset-btn:hover {
+    background: #da190b;
+    transform: translateY(-2px);
+}
+
+.scoreboard {
+    background: white;
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.scoreboard h3 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.scores {
+    margin-bottom: 25px;
+}
+
+.score-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 1.1rem;
+}
+
+.score-item:last-child {
+    border-bottom: none;
+}
+
+.score-item span:last-child {
+    font-weight: bold;
+    font-size: 1.3rem;
+    color: #4CAF50;
+}
+
+.instructions {
+    background: white;
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    margin-top: 20px;
+}
+
+.instructions summary {
+    font-size: 1.2rem;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 10px 0;
+    color: #555;
+}
+
+.instruction-content {
+    padding-top: 15px;
+}
+
+.instruction-content h4 {
+    margin: 15px 0 10px;
+    color: #333;
+}
+
+.instruction-content ul {
+    margin-left: 20px;
+    margin-bottom: 15px;
+}
+
+.instruction-content li {
+    margin-bottom: 8px;
+    line-height: 1.5;
+}
+
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+    
+    .game-area {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+    
+    header h1 {
+        font-size: 2rem;
+    }
+    
+    .choices {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .vs-indicator {
+        order: 2;
+        margin: 10px 0;
+    }
+    
+    .choice-display {
+        width: 60px;
+        height: 60px;
+        font-size: 2rem;
+    }
+    
+    .countdown {
+        font-size: 2.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .video-container {
+        max-width: 100%;
+    }
+    
+    .gesture-icons {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    
+    .gesture-icon {
+        font-size: 1.5rem;
+        padding: 8px;
+    }
+}
+
+#confetti-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.confetti {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #f44336;
+    animation: confetti-fall 3s linear forwards;
+}
+
+.confetti:nth-child(2n) { background: #4CAF50; }
+.confetti:nth-child(3n) { background: #2196F3; }
+.confetti:nth-child(4n) { background: #ff9800; }
+.confetti:nth-child(5n) { background: #9c27b0; }
+.confetti:nth-child(6n) { background: #ffeb3b; }
+
+@keyframes confetti-fall {
+    0% {
+        transform: translateY(-100vh) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+@keyframes result-bounce {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes winner-pulse {
+    0%, 100% {
+        transform: scale(1.1);
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    }
+    50% {
+        transform: scale(1.2);
+        box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+    }
+}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎮 Rock Paper Scissors</h1>
+            <p>Use hand gestures to play against the computer!</p>
+        </header>
+
+        <main class="game-area">
+            <div class="video-section">
+                <div class="video-container">
+                    <video id="webcam" autoplay playsinline muted></video>
+                    <canvas id="output" width="640" height="480"></canvas>
+                </div>
+                <div class="gesture-status">
+                    <p id="gesture-detected">Show your hand to the camera</p>
+                    <div class="detection-quality">
+                        <span class="quality-label">Detection Quality:</span>
+                        <div class="quality-bar">
+                            <div class="quality-fill" id="quality-fill"></div>
+                        </div>
+                        <span class="quality-text" id="quality-text">--</span>
+                    </div>
+                    <div class="gesture-icons">
+                        <span class="gesture-icon" data-gesture="rock">✊</span>
+                        <span class="gesture-icon" data-gesture="paper">✋</span>
+                        <span class="gesture-icon" data-gesture="scissors">✌️</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-controls">
+                <div class="round-info">
+                    <h3>Round <span id="round-number">1</span></h3>
+                    <div class="countdown" id="countdown"></div>
+                </div>
+
+                <div class="choices">
+                    <div class="choice-card">
+                        <h4>You</h4>
+                        <div class="choice-display" id="player-choice">?</div>
+                        <p id="player-gesture">Waiting...</p>
+                    </div>
+                    
+                    <div class="vs-indicator">VS</div>
+                    
+                    <div class="choice-card">
+                        <h4>Computer</h4>
+                        <div class="choice-display" id="computer-choice">?</div>
+                        <p id="computer-gesture">Waiting...</p>
+                    </div>
+                </div>
+
+                <div class="result-section">
+                    <h3 id="round-result"></h3>
+                    <button id="play-button" class="play-btn">Start Playing</button>
+                </div>
+            </div>
+        </main>
+
+        <aside class="scoreboard">
+            <h3>Score</h3>
+            <div class="scores">
+                <div class="score-item">
+                    <span>You:</span>
+                    <span id="player-score">0</span>
+                </div>
+                <div class="score-item">
+                    <span>Computer:</span>
+                    <span id="computer-score">0</span>
+                </div>
+            </div>
+            <button id="reset-button" class="reset-btn">Reset Game</button>
+        </aside>
+
+        <div class="instructions">
+            <details>
+                <summary>How to Play</summary>
+                <div class="instruction-content">
+                    <h4>Hand Gestures:</h4>
+                    <ul>
+                        <li><strong>Rock ✊:</strong> Make a fist</li>
+                        <li><strong>Paper ✋:</strong> Open hand with fingers spread</li>
+                        <li><strong>Scissors ✌️:</strong> Peace sign (two fingers up)</li>
+                    </ul>
+                    <h4>Rules:</h4>
+                    <ul>
+                        <li>Rock beats Scissors</li>
+                        <li>Scissors beats Paper</li>
+                        <li>Paper beats Rock</li>
+                    </ul>
+                    <p><strong>Tip:</strong> Position your hand clearly in front of the camera for best detection!</p>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <div id="confetti-container"></div>
+
+    <script>
+class RockPaperScissorsGame {
+    constructor() {
+        this.videoElement = document.getElementById('webcam');
+        this.canvasElement = document.getElementById('output');
+        this.canvasCtx = this.canvasElement.getContext('2d');
+        
+        this.offscreenCanvas = document.createElement('canvas');
+        this.offscreenCtx = this.offscreenCanvas.getContext('2d');
+        
+        this.hands = null;
+        this.animationId = null;
+        
+        this.gameState = {
+            round: 1,
+            playerScore: 0,
+            computerScore: 0,
+            isPlaying: false,
+            currentPlayerGesture: null,
+            currentComputerChoice: null,
+            countdown: 0
+        };
+        
+        this.gestures = ['rock', 'paper', 'scissors'];
+        this.gestureEmojis = {
+            'rock': '✊',
+            'paper': '✋',
+            'scissors': '✌️'
+        };
+        
+        this.detectedGesture = null;
+        this.gestureConfidence = 0;
+        this.gestureHistory = [];
+        this.gestureStabilityFrames = 5;
+        this.confidenceThreshold = 0.8;
+        this.currentQuality = 0;
+        
+        this.initializeElements();
+        this.setupEventListeners();
+        this.initializeCamera();
+    }
+    
+    initializeElements() {
+        this.elements = {
+            gestureDetected: document.getElementById('gesture-detected'),
+            roundNumber: document.getElementById('round-number'),
+            countdown: document.getElementById('countdown'),
+            playerChoice: document.getElementById('player-choice'),
+            computerChoice: document.getElementById('computer-choice'),
+            playerGesture: document.getElementById('player-gesture'),
+            computerGesture: document.getElementById('computer-gesture'),
+            roundResult: document.getElementById('round-result'),
+            playButton: document.getElementById('play-button'),
+            resetButton: document.getElementById('reset-button'),
+            playerScore: document.getElementById('player-score'),
+            computerScore: document.getElementById('computer-score'),
+            gestureIcons: document.querySelectorAll('.gesture-icon'),
+            qualityFill: document.getElementById('quality-fill'),
+            qualityText: document.getElementById('quality-text'),
+            confettiContainer: document.getElementById('confetti-container')
+        };
+    }
+    
+    setupEventListeners() {
+        this.elements.playButton.addEventListener('click', () => this.startRound());
+        this.elements.resetButton.addEventListener('click', () => this.resetGame());
+    }
+    
+    async initializeCamera() {
+        try {
+            console.log('Initializing camera...');
+            
+            const constraints = {
+                video: {
+                    width: { ideal: 640 },
+                    height: { ideal: 480 },
+                    facingMode: 'user'
+                }
+            };
+            
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            this.videoElement.srcObject = stream;
+            
+            this.videoElement.addEventListener('loadedmetadata', () => {
+                console.log('Video metadata loaded');
+                this.canvasElement.width = this.videoElement.videoWidth || 640;
+                this.canvasElement.height = this.videoElement.videoHeight || 480;
+                this.offscreenCanvas.width = this.canvasElement.width;
+                this.offscreenCanvas.height = this.canvasElement.height;
+                this.initializeMediaPipe();
+            });
+            
+            this.videoElement.play();
+            
+            console.log('Camera initialized successfully');
+            
+        } catch (error) {
+            console.error('Error accessing camera:', error);
+            this.showError('Camera access denied. Please allow camera permissions and refresh the page.');
+        }
+    }
+    
+    initializeMediaPipe() {
+        console.log('Initializing MediaPipe Hands...');
+        
+        this.hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+        
+        this.hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+        
+        this.hands.onResults((results) => this.onHandResults(results));
+        
+        this.startVideoProcessing();
+        console.log('MediaPipe Hands initialized successfully');
+    }
+    
+    startVideoProcessing() {
+        const processFrame = async () => {
+            if (this.videoElement.readyState === 4) {
+                await this.hands.send({ image: this.videoElement });
+            }
+            this.animationId = requestAnimationFrame(processFrame);
+        };
+        processFrame();
+    }
+    
+    onHandResults(results) {
+        this.offscreenCtx.save();
+        this.offscreenCtx.clearRect(0, 0, this.offscreenCanvas.width, this.offscreenCanvas.height);
+        
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            const landmarks = results.multiHandLandmarks[0];
+            
+            drawConnectors(this.offscreenCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 3});
+            drawLandmarks(this.offscreenCtx, landmarks, {color: '#FF0000', lineWidth: 2, radius: 4});
+            
+            const gestureResult = this.classifyGesture(landmarks);
+            const smoothedGesture = this.smoothGesture(gestureResult);
+            this.updateGestureDisplay(smoothedGesture);
+            this.updateQualityIndicator(gestureResult);
+        } else {
+            this.updateGestureDisplay(null);
+            this.updateQualityIndicator({ gesture: null, confidence: 0 });
+        }
+        
+        this.offscreenCtx.restore();
+        
+        this.canvasCtx.clearRect(0, 0, this.canvasElement.width, this.canvasElement.height);
+        this.canvasCtx.drawImage(this.offscreenCanvas, 0, 0);
+    }
+    
+    classifyGesture(landmarks) {
+        if (!landmarks || landmarks.length !== 21) {
+            return { gesture: null, confidence: 0 };
+        }
+        
+        const fingerTips = [4, 8, 12, 16, 20];
+        const fingerMCPs = [2, 5, 9, 13, 17];
+        const fingerPIPs = [3, 6, 10, 14, 18];
+        
+        let extendedFingers = [];
+        let confidenceScore = 0;
+        
+        if (landmarks[4].x > landmarks[3].x) {
+            extendedFingers.push('thumb');
+            confidenceScore += 0.2;
+        }
+        
+        for (let i = 1; i < 5; i++) {
+            const tipIndex = fingerTips[i];
+            const pipIndex = fingerPIPs[i];
+            const mcpIndex = fingerMCPs[i];
+            
+            const fingerExtended = landmarks[tipIndex].y < landmarks[pipIndex].y;
+            const clearExtension = Math.abs(landmarks[tipIndex].y - landmarks[mcpIndex].y) > 0.05;
+            
+            if (fingerExtended && clearExtension) {
+                extendedFingers.push(i);
+                confidenceScore += 0.2;
+            }
+        }
+        
+        let gesture = null;
+        let additionalConfidence = 0;
+        
+        if (extendedFingers.length === 0) {
+            gesture = 'rock';
+            additionalConfidence = 0.3;
+        } else if (extendedFingers.length >= 4) {
+            gesture = 'paper';
+            additionalConfidence = 0.2;
+        } else if (extendedFingers.includes(1) && extendedFingers.includes(2) && extendedFingers.length === 2) {
+            gesture = 'scissors';
+            additionalConfidence = 0.4;
+        }
+        
+        const totalConfidence = Math.min(1.0, confidenceScore + additionalConfidence);
+        
+        return { gesture, confidence: totalConfidence };
+    }
+    
+    smoothGesture(gestureResult) {
+        if (!gestureResult || !gestureResult.gesture) {
+            this.gestureHistory = [];
+            return null;
+        }
+        
+        this.gestureHistory.push(gestureResult);
+        
+        if (this.gestureHistory.length > this.gestureStabilityFrames) {
+            this.gestureHistory.shift();
+        }
+        
+        if (this.gestureHistory.length < this.gestureStabilityFrames) {
+            return null;
+        }
+        
+        const gestureCounts = {};
+        let totalConfidence = 0;
+        
+        this.gestureHistory.forEach(result => {
+            if (result.gesture) {
+                gestureCounts[result.gesture] = (gestureCounts[result.gesture] || 0) + 1;
+                totalConfidence += result.confidence;
+            }
+        });
+        
+        const avgConfidence = totalConfidence / this.gestureHistory.length;
+        
+        if (avgConfidence < this.confidenceThreshold) {
+            return null;
+        }
+        
+        const dominantGesture = Object.keys(gestureCounts).reduce((a, b) => 
+            gestureCounts[a] > gestureCounts[b] ? a : b);
+        
+        const dominantCount = gestureCounts[dominantGesture];
+        const stabilityRatio = dominantCount / this.gestureHistory.length;
+        
+        if (stabilityRatio >= 0.6) {
+            return dominantGesture;
+        }
+        
+        return null;
+    }
+    
+    updateGestureDisplay(gesture) {
+        this.detectedGesture = gesture;
+        
+        this.elements.gestureIcons.forEach(icon => {
+            icon.classList.remove('active');
+        });
+        
+        if (gesture) {
+            this.elements.gestureDetected.textContent = `Detected: ${gesture.charAt(0).toUpperCase() + gesture.slice(1)} ${this.gestureEmojis[gesture]}`;
+            
+            const activeIcon = document.querySelector(`[data-gesture="${gesture}"]`);
+            if (activeIcon) {
+                activeIcon.classList.add('active');
+            }
+        } else {
+            this.elements.gestureDetected.textContent = 'Show your hand to the camera';
+        }
+    }
+    
+    updateQualityIndicator(gestureResult) {
+        const confidence = gestureResult ? gestureResult.confidence : 0;
+        this.currentQuality = confidence;
+        
+        const percentage = Math.round(confidence * 100);
+        this.elements.qualityFill.style.width = `${percentage}%`;
+        
+        if (confidence === 0) {
+            this.elements.qualityText.textContent = '--';
+        } else {
+            this.elements.qualityText.textContent = `${percentage}%`;
+        }
+    }
+    
+    startRound() {
+        if (this.gameState.isPlaying) return;
+        
+        this.gameState.isPlaying = true;
+        this.elements.playButton.disabled = true;
+        this.elements.playButton.textContent = 'Get Ready...';
+        
+        this.clearPreviousRound();
+        
+        let countdown = 3;
+        this.elements.countdown.textContent = countdown;
+        
+        const countdownInterval = setInterval(() => {
+            countdown--;
+            if (countdown > 0) {
+                this.elements.countdown.textContent = countdown;
+            } else if (countdown === 0) {
+                this.elements.countdown.textContent = 'SHOW!';
+            } else {
+                clearInterval(countdownInterval);
+                this.captureGesture();
+            }
+        }, 1000);
+    }
+    
+    captureGesture() {
+        const playerGesture = this.detectedGesture;
+        const computerChoice = this.gestures[Math.floor(Math.random() * 3)];
+        
+        this.gameState.currentPlayerGesture = playerGesture;
+        this.gameState.currentComputerChoice = computerChoice;
+        
+        this.displayChoices(playerGesture, computerChoice);
+        this.determineWinner(playerGesture, computerChoice);
+        
+        this.elements.countdown.textContent = '';
+        this.gameState.isPlaying = false;
+        this.elements.playButton.disabled = false;
+        this.elements.playButton.textContent = 'Play Again';
+    }
+    
+    displayChoices(playerGesture, computerChoice) {
+        if (playerGesture) {
+            this.elements.playerChoice.textContent = this.gestureEmojis[playerGesture];
+            this.elements.playerGesture.textContent = playerGesture.charAt(0).toUpperCase() + playerGesture.slice(1);
+        } else {
+            this.elements.playerChoice.textContent = '❌';
+            this.elements.playerGesture.textContent = 'Not detected';
+        }
+        
+        this.elements.computerChoice.textContent = this.gestureEmojis[computerChoice];
+        this.elements.computerGesture.textContent = computerChoice.charAt(0).toUpperCase() + computerChoice.slice(1);
+    }
+    
+    determineWinner(playerGesture, computerChoice) {
+        setTimeout(() => {
+            if (!playerGesture) {
+                this.elements.roundResult.textContent = 'No gesture detected - Computer wins!';
+                this.elements.roundResult.className = 'lose animate-in';
+                this.elements.computerChoice.classList.add('winner');
+                this.gameState.computerScore++;
+            } else if (playerGesture === computerChoice) {
+                this.elements.roundResult.textContent = "It's a tie!";
+                this.elements.roundResult.className = 'tie animate-in';
+            } else if (
+                (playerGesture === 'rock' && computerChoice === 'scissors') ||
+                (playerGesture === 'paper' && computerChoice === 'rock') ||
+                (playerGesture === 'scissors' && computerChoice === 'paper')
+            ) {
+                this.elements.roundResult.textContent = 'You win this round!';
+                this.elements.roundResult.className = 'win animate-in';
+                this.elements.playerChoice.classList.add('winner');
+                this.gameState.playerScore++;
+                this.triggerConfetti();
+            } else {
+                this.elements.roundResult.textContent = 'Computer wins this round!';
+                this.elements.roundResult.className = 'lose animate-in';
+                this.elements.computerChoice.classList.add('winner');
+                this.gameState.computerScore++;
+            }
+            
+            setTimeout(() => {
+                this.elements.roundResult.classList.remove('animate-in');
+            }, 600);
+        }, 500);
+        
+        this.updateScore();
+        this.gameState.round++;
+        this.elements.roundNumber.textContent = this.gameState.round;
+    }
+    
+    updateScore() {
+        this.elements.playerScore.textContent = this.gameState.playerScore;
+        this.elements.computerScore.textContent = this.gameState.computerScore;
+    }
+    
+    clearPreviousRound() {
+        this.elements.playerChoice.textContent = '?';
+        this.elements.computerChoice.textContent = '?';
+        this.elements.playerGesture.textContent = 'Waiting...';
+        this.elements.computerGesture.textContent = 'Waiting...';
+        this.elements.roundResult.textContent = '';
+        this.elements.roundResult.className = '';
+        
+        this.elements.playerChoice.classList.remove('winner', 'loser');
+        this.elements.computerChoice.classList.remove('winner', 'loser');
+    }
+    
+    resetGame() {
+        this.gameState = {
+            round: 1,
+            playerScore: 0,
+            computerScore: 0,
+            isPlaying: false,
+            currentPlayerGesture: null,
+            currentComputerChoice: null,
+            countdown: 0
+        };
+        
+        this.clearPreviousRound();
+        this.updateScore();
+        this.elements.roundNumber.textContent = this.gameState.round;
+        this.elements.playButton.textContent = 'Start Playing';
+        this.elements.playButton.disabled = false;
+        this.elements.countdown.textContent = '';
+    }
+    
+    triggerConfetti() {
+        const container = this.elements.confettiContainer;
+        const confettiCount = 50;
+        
+        for (let i = 0; i < confettiCount; i++) {
+            setTimeout(() => {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * 100 + '%';
+                confetti.style.animationDelay = Math.random() * 2 + 's';
+                confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                
+                const randomRotation = Math.random() * 360;
+                confetti.style.transform = `rotate(${randomRotation}deg)`;
+                
+                container.appendChild(confetti);
+                
+                setTimeout(() => {
+                    if (confetti.parentNode) {
+                        confetti.parentNode.removeChild(confetti);
+                    }
+                }, 4000);
+            }, i * 50);
+        }
+    }
+    
+    showError(message) {
+        this.elements.gestureDetected.textContent = message;
+        this.elements.gestureDetected.style.color = '#f44336';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM loaded, initializing game...');
+    new RockPaperScissorsGame();
+});
+    </script>
+</body>
+</html>
