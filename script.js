@@ -333,10 +333,16 @@ class RockPaperScissorsGame {
                 this.canvasElement.height = height;
                 this.offscreenCanvas.width = width;
                 this.offscreenCanvas.height = height;
-                this.initializeMediaPipe();
             }, { once: true });
 
+            // Wait for video to be ready to play
             await this.videoElement.play();
+            console.log('Video playing');
+
+            // Safari compatibility: wait a bit for video to be fully ready
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            this.initializeMediaPipe();
 
             console.log('Camera initialized successfully');
 
@@ -405,23 +411,26 @@ class RockPaperScissorsGame {
     
     initializeMediaPipe() {
         console.log('Initializing MediaPipe Hands...');
-        
+
         this.hands = new Hands({
             locateFile: (file) => {
                 return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
             }
         });
-        
+
         this.hands.setOptions({
             maxNumHands: 1,
             modelComplexity: 1,
             minDetectionConfidence: 0.5,
             minTrackingConfidence: 0.5
         });
-        
+
         this.hands.onResults((results) => this.onHandResults(results));
-        
+
         this.startVideoProcessing();
+
+        // Enable play button after MediaPipe is initialized
+        this.elements.playButton.disabled = false;
         console.log('MediaPipe Hands initialized successfully');
     }
     
