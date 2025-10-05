@@ -938,8 +938,9 @@ header p {
     margin-top: 4px;
 }
 
-/* Camera Error Modal */
-.camera-error-modal .modal-content {
+/* Camera Error Modal & Mobile Block Modal */
+.camera-error-modal .modal-content,
+.mobile-block-modal .modal-content {
     max-width: 600px;
 }
 

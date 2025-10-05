@@ -80,7 +80,13 @@ class RockPaperScissorsGame {
         this.initializeElements();
         this.setupEventListeners();
         this.initializeTheme();
-        this.initializeCamera();
+
+        // Check device compatibility before initializing camera
+        if (this.isMobilePhone()) {
+            this.showMobileBlockModal();
+        } else {
+            this.initializeCamera();
+        }
     }
     
     initializeElements() {
@@ -129,7 +135,8 @@ class RockPaperScissorsGame {
             achievementsList: getElement('achievements-list'),
             cameraErrorModal: getElement('camera-error-modal'),
             cameraErrorMessage: getElement('camera-error-message'),
-            retryCameraButton: getElement('retry-camera-button')
+            retryCameraButton: getElement('retry-camera-button'),
+            mobileBlockModal: getElement('mobile-block-modal')
         };
     }
     
@@ -158,6 +165,11 @@ class RockPaperScissorsGame {
                 this.closeAchievementsModal();
             }
         });
+
+        // Window resize listener to re-check device compatibility
+        window.addEventListener('resize', debounce(() => {
+            this.checkDeviceCompatibility();
+        }, 500));
 
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
@@ -298,7 +310,74 @@ class RockPaperScissorsGame {
         document.body.style.overflow = '';
         this.elements.helpButton.focus();
     }
-    
+
+    isMobilePhone() {
+        // Check screen width - tablets are typically 768px and above
+        const screenWidth = window.innerWidth;
+
+        // Check user agent for mobile phones (excluding tablets)
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+        // Patterns that indicate mobile phone (not tablet)
+        const mobilePhonePatterns = /iPhone|iPod|Android.*Mobile|webOS|BlackBerry|IEMobile|Opera Mini/i;
+
+        // Check if it's a mobile device AND has small screen
+        // Tablets typically have width >= 768px
+        const isMobileUA = mobilePhonePatterns.test(userAgent);
+        const isSmallScreen = screenWidth < 768;
+
+        // Additional check: if it's Android but screen is large, it's likely a tablet
+        const isAndroidTablet = /Android/i.test(userAgent) && !(/Mobile/i.test(userAgent));
+
+        // iPad detection (iPads don't have 'Mobile' in UA)
+        const isIPad = /iPad/i.test(userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+        // Return true only for mobile phones with small screens
+        // Exclude tablets (iPads, Android tablets, and devices with large screens)
+        return (isMobileUA && isSmallScreen && !isAndroidTablet && !isIPad);
+    }
+
+    showMobileBlockModal() {
+        console.log('Mobile phone detected - blocking game access');
+        this.elements.mobileBlockModal.classList.add('show');
+        this.elements.mobileBlockModal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+
+        // Disable all game controls
+        this.elements.playButton.disabled = true;
+        this.elements.resetButton.disabled = true;
+    }
+
+    hideMobileBlockModal() {
+        this.elements.mobileBlockModal.classList.remove('show');
+        this.elements.mobileBlockModal.style.display = 'none';
+        document.body.style.overflow = '';
+
+        // Re-enable game controls
+        this.elements.playButton.disabled = false;
+        this.elements.resetButton.disabled = false;
+    }
+
+    checkDeviceCompatibility() {
+        const isBlockedCurrently = this.elements.mobileBlockModal.classList.contains('show');
+        const shouldBeBlocked = this.isMobilePhone();
+
+        if (shouldBeBlocked && !isBlockedCurrently) {
+            // Device is now too small - show block modal
+            this.showMobileBlockModal();
+            // Clean up camera if it was running
+            if (this.isProcessing) {
+                this.cleanupCamera();
+            }
+        } else if (!shouldBeBlocked && isBlockedCurrently) {
+            // Device is now large enough - hide block modal and initialize camera
+            this.hideMobileBlockModal();
+            if (!this.isProcessing && !this.cameraStream) {
+                this.initializeCamera();
+            }
+        }
+    }
+
     async initializeCamera() {
         try {
             console.log('Initializing camera...');
